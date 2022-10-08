@@ -1,4 +1,5 @@
-import torch
+# import torch
+import paddle
 
 class TriangularCausalMask():
     def __init__(self, B, L, device="cpu"):

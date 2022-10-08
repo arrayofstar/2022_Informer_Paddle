@@ -1,21 +1,24 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+# import torch
+# import torch.nn as nn
+# import torch.nn.functional as F
+import paddle
+import paddle.nn as nn
+import paddle.nn.functional as F
 
 import math
 
-class PositionalEmbedding(nn.Module):
+class PositionalEmbedding(nn.Layer):
     def __init__(self, d_model, max_len=5000):
         super(PositionalEmbedding, self).__init__()
         # Compute the positional encodings once in log space.
-        pe = torch.zeros(max_len, d_model).float()
-        pe.require_grad = False
+        pe = paddle.zeros([max_len, d_model])  # mf-这里不确定
+        pe.stop_gradient = True  # mf-这里不确定
 
-        position = torch.arange(0, max_len).float().unsqueeze(1)
-        div_term = (torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)).exp()
+        position = paddle.arange(0, max_len, dtype='float32').unsqueeze(1)
+        div_term = (paddle.arange(0, d_model, 2, dtype='float32') * -(math.log(10000.0) / d_model)).exp()
 
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
+        pe[:, 0::2] = paddle.sin(position * div_term)
+        pe[:, 1::2] = paddle.cos(position * div_term)
 
         pe = pe.unsqueeze(0)
         self.register_buffer('pe', pe)
@@ -23,40 +26,44 @@ class PositionalEmbedding(nn.Module):
     def forward(self, x):
         return self.pe[:, :x.size(1)]
 
-class TokenEmbedding(nn.Module):
+class TokenEmbedding(nn.Layer):
     def __init__(self, c_in, d_model):
         super(TokenEmbedding, self).__init__()
-        padding = 1 if torch.__version__>='1.5.0' else 2
-        self.tokenConv = nn.Conv1d(in_channels=c_in, out_channels=d_model, 
+        padding = 1 if paddle.__version__>='1.5.0' else 2
+        self.tokenConv = nn.Conv1D(in_channels=c_in, out_channels=d_model,
                                     kernel_size=3, padding=padding, padding_mode='circular')
-        for m in self.modules():
-            if isinstance(m, nn.Conv1d):
-                nn.init.kaiming_normal_(m.weight,mode='fan_in',nonlinearity='leaky_relu')
+        # mf-为解决的问题
+        # for m in self.modules():
+        #     if isinstance(m, nn.Conv1D):
+        #         nn.initializer.KaimingNormal(m.weight,mode='fan_in',nonlinearity='leaky_relu')  # mf-这里不确定
 
     def forward(self, x):
-        x = self.tokenConv(x.permute(0, 2, 1)).transpose(1,2)
+        x = x
+        x = paddle.reshape(x, shape=[32,12,96])  # mf-这里还没有找到对应的函数 x.permute(0, 2, 1)
+        x = self.tokenConv(x)
+        x = paddle.transpose(x, perm=[0, 2, 1])# mf这里非常不确定
         return x
 
-class FixedEmbedding(nn.Module):
+class FixedEmbedding(nn.Layer):
     def __init__(self, c_in, d_model):
         super(FixedEmbedding, self).__init__()
 
-        w = torch.zeros(c_in, d_model).float()
-        w.require_grad = False
+        w = paddle.zeros([c_in, d_model])
+        w.stop_gradient = True
 
-        position = torch.arange(0, c_in).float().unsqueeze(1)
-        div_term = (torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)).exp()
+        position = paddle.arange(0, c_in, dtype='float32').unsqueeze(1)
+        div_term = (paddle.arange(0, d_model, 2, dtype='float32') * -(math.log(10000.0) / d_model)).exp()
 
-        w[:, 0::2] = torch.sin(position * div_term)
-        w[:, 1::2] = torch.cos(position * div_term)
+        w[:, 0::2] = paddle.sin(position * div_term)
+        w[:, 1::2] = paddle.cos(position * div_term)
 
         self.emb = nn.Embedding(c_in, d_model)
-        self.emb.weight = nn.Parameter(w, requires_grad=False)
+        self.emb.weight = paddle.create_parameter(shape=w.shape, dtype=str(x.numpy().dtype))
 
     def forward(self, x):
         return self.emb(x).detach()
 
-class TemporalEmbedding(nn.Module):
+class TemporalEmbedding(nn.Layer):
     def __init__(self, d_model, embed_type='fixed', freq='h'):
         super(TemporalEmbedding, self).__init__()
 
@@ -82,7 +89,7 @@ class TemporalEmbedding(nn.Module):
         
         return hour_x + weekday_x + day_x + month_x + minute_x
 
-class TimeFeatureEmbedding(nn.Module):
+class TimeFeatureEmbedding(nn.Layer):
     def __init__(self, d_model, embed_type='timeF', freq='h'):
         super(TimeFeatureEmbedding, self).__init__()
 
@@ -93,7 +100,7 @@ class TimeFeatureEmbedding(nn.Module):
     def forward(self, x):
         return self.embed(x)
 
-class DataEmbedding(nn.Module):
+class DataEmbedding(nn.Layer):
     def __init__(self, c_in, d_model, embed_type='fixed', freq='h', dropout=0.1):
         super(DataEmbedding, self).__init__()
 

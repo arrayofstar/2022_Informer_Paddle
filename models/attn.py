@@ -1,13 +1,16 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+# import torch
+# import torch.nn as nn
+# import torch.nn.functional as F
+import paddle
+import paddle.nn as nn
+import paddle.nn.functional as F
 
 import numpy as np
 
 from math import sqrt
 from utils.masking import TriangularCausalMask, ProbMask
 
-class FullAttention(nn.Module):
+class FullAttention(nn.Layer):
     def __init__(self, mask_flag=True, factor=5, scale=None, attention_dropout=0.1, output_attention=False):
         super(FullAttention, self).__init__()
         self.scale = scale
@@ -20,22 +23,22 @@ class FullAttention(nn.Module):
         _, S, _, D = values.shape
         scale = self.scale or 1./sqrt(E)
 
-        scores = torch.einsum("blhe,bshe->bhls", queries, keys)
+        scores = paddle.einsum("blhe,bshe->bhls", queries, keys)
         if self.mask_flag:
             if attn_mask is None:
                 attn_mask = TriangularCausalMask(B, L, device=queries.device)
 
             scores.masked_fill_(attn_mask.mask, -np.inf)
 
-        A = self.dropout(torch.softmax(scale * scores, dim=-1))
-        V = torch.einsum("bhls,bshd->blhd", A, values)
+        A = self.dropout(nn.Softmax(scale * scores, dim=-1))
+        V = paddle.einsum("bhls,bshd->blhd", A, values)
         
         if self.output_attention:
             return (V.contiguous(), A)
         else:
             return (V.contiguous(), None)
 
-class ProbAttention(nn.Module):
+class ProbAttention(nn.Layer):
     def __init__(self, mask_flag=True, factor=5, scale=None, attention_dropout=0.1, output_attention=False):
         super(ProbAttention, self).__init__()
         self.factor = factor
@@ -51,23 +54,23 @@ class ProbAttention(nn.Module):
 
         # calculate the sampled Q_K
         K_expand = K.unsqueeze(-3).expand(B, H, L_Q, L_K, E)  # mf-先增加一个维度，相当于复制，再扩充
-        print('K_expand.shape', K_expand.shape)
-        index_sample = torch.randint(L_K, (L_Q, sample_k)) # real U = U_part(factor*ln(L_k))*L_q
-        K_sample = K_expand[:, :, torch.arange(L_Q).unsqueeze(1), index_sample, :]
-        print('K_sample', K_sample.shape)
-        Q_K_sample = torch.matmul(Q.unsqueeze(-2), K_sample.transpose(-2, -1)).squeeze(-2)
-        print('Q_K_sample', Q_K_sample.shape)
+        # print('K_expand.shape', K_expand.shape)
+        index_sample = paddle.randint(L_K, (L_Q, sample_k)) # real U = U_part(factor*ln(L_k))*L_q
+        K_sample = K_expand[:, :, paddle.arange(L_Q).unsqueeze(1), index_sample, :]
+        # print('K_sample', K_sample.shape)
+        Q_K_sample = paddle.matmul(Q.unsqueeze(-2), K_sample.transpose(-2, -1)).squeeze(-2)
+        # print('Q_K_sample', Q_K_sample.shape)
 
         # find the Top_k query with sparisty measurement
-        M = Q_K_sample.max(-1)[0] - torch.div(Q_K_sample.sum(-1), L_K)  # 96个Q和25个K之间的关系
-        print('Q_K_sample.max(-1)[0].shape', Q_K_sample.max(-1)[0].shape)
+        M = Q_K_sample.max(-1)[0] - paddle.divide(Q_K_sample.sum(-1), L_K)  # 96个Q和25个K之间的关系
+        # print('Q_K_sample.max(-1)[0].shape', Q_K_sample.max(-1)[0].shape)
         M_top = M.topk(n_top, sorted=False)[1]
 
         # use the reduced Q to calculate Q_K
-        Q_reduce = Q[torch.arange(B)[:, None, None],
-                     torch.arange(H)[None, :, None],
+        Q_reduce = Q[paddle.arange(B)[:, None, None],
+                     paddle.arange(H)[None, :, None],
                      M_top, :] # factor*ln(L_q)
-        Q_K = torch.matmul(Q_reduce, K.transpose(-2, -1)) # factor*ln(L_q)*L_k
+        Q_K = paddle.matmul(Q_reduce, K.transpose(-2, -1)) # factor*ln(L_q)*L_k
 
         return Q_K, M_top
 
@@ -89,14 +92,14 @@ class ProbAttention(nn.Module):
             attn_mask = ProbMask(B, H, L_Q, index, scores, device=V.device)
             scores.masked_fill_(attn_mask.mask, -np.inf)
 
-        attn = torch.softmax(scores, dim=-1) # nn.Softmax(dim=-1)(scores)
+        attn = nn.Softmax(scores, dim=-1) # nn.Softmax(dim=-1)(scores)
 
-        context_in[torch.arange(B)[:, None, None],
-                   torch.arange(H)[None, :, None],
-                   index, :] = torch.matmul(attn, V).type_as(context_in)
+        context_in[paddle.arange(B)[:, None, None],
+                   paddle.arange(H)[None, :, None],
+                   index, :] = paddle.matmul(attn, V).type_as(context_in)
         if self.output_attention:
-            attns = (torch.ones([B, H, L_V, L_V])/L_V).type_as(attn).to(attn.device)
-            attns[torch.arange(B)[:, None, None], torch.arange(H)[None, :, None], index, :] = attn
+            attns = (paddle.ones([B, H, L_V, L_V])/L_V).type_as(attn).to(attn.device)
+            attns[paddle.arange(B)[:, None, None], paddle.arange(H)[None, :, None], index, :] = attn
             return (context_in, attns)
         else:
             return (context_in, None)
@@ -129,7 +132,7 @@ class ProbAttention(nn.Module):
         return context.transpose(2,1).contiguous(), attn
 
 
-class AttentionLayer(nn.Module):
+class AttentionLayer(nn.Layer):
     def __init__(self, attention, d_model, n_heads, 
                  d_keys=None, d_values=None, mix=False):
         super(AttentionLayer, self).__init__()

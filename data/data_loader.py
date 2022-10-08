@@ -2,8 +2,9 @@ import os
 import numpy as np
 import pandas as pd
 
-import torch
-from torch.utils.data import Dataset, DataLoader
+# import torch
+# from torch.utils.data import Dataset, DataLoader
+from paddle.io import Dataset, DataLoader
 # from sklearn.preprocessing import StandardScaler
 
 from utils.tools import StandardScaler

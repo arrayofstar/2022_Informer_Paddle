@@ -1,6 +1,6 @@
 import argparse
 import os
-import torch
+import paddle
 
 from exp.exp_informer import Exp_Informer
 
@@ -73,7 +73,7 @@ parser.add_argument('--devices', type=str, default='0,1,2,3',help='device ids of
 # mf-从命令行中解析参数
 args = parser.parse_args()
 
-args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False
+args.use_gpu = True if paddle.device.is_compiled_with_cuda() and args.use_gpu else False
 
 if args.use_gpu and args.use_multi_gpu:
     args.devices = args.devices.replace(' ','')
@@ -86,7 +86,8 @@ data_parser = {
     'ETTh2':{'data':'ETTh2.csv','T':'OT','M':[7,7,7],'S':[1,1,1],'MS':[7,7,1]},
     'ETTm1':{'data':'ETTm1.csv','T':'OT','M':[7,7,7],'S':[1,1,1],'MS':[7,7,1]},
     'ETTm2':{'data':'ETTm2.csv','T':'OT','M':[7,7,7],'S':[1,1,1],'MS':[7,7,1]},
-    'WTH':{'data':'WTH.csv','T':'WetBulbCelsius','M':[12,12,12],'S':[1,1,1],'MS':[12,12,1]},
+    'WTH':{'data':'WTH.csv','T':'WetBulbCelsius','M':[12,12,12],'S':[1,1,1],'MS':[12,12,1],
+           'itr':1, 'train_epochs':3, 'do_predict':True},
     'ECL':{'data':'ECL.csv','T':'MT_320','M':[321,321,321],'S':[1,1,1],'MS':[321,321,1]},
     'Solar':{'data':'solar_AL.csv','T':'POWER_136','M':[137,137,137],'S':[1,1,1],'MS':[137,137,1]},
     'my_data':{'data':'solar_AL.csv','T':'POWER_136','M':[64,64,64],'S':[1,1,1],'MS':[64,64,1]},
@@ -125,4 +126,4 @@ for ii in range(args.itr):
         print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
         exp.predict(setting, True)
 
-    torch.cuda.empty_cache()
+    paddle.device.cuda.empty_cache()

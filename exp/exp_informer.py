@@ -7,10 +7,14 @@ from utils.metrics import metric
 
 import numpy as np
 
-import torch
-import torch.nn as nn
-from torch import optim
-from torch.utils.data import DataLoader
+# import torch
+# import torch.nn as nn
+# from torch import optim
+# from torch.utils.data import DataLoader
+import paddle
+import paddle.nn as nn
+from paddle import optimizer
+from paddle.io import DataLoader
 
 import os
 import time
@@ -27,7 +31,7 @@ class Exp_Informer(Exp_Basic):
             'informer':Informer,
             'informerstack':InformerStack,
         }
-        if self.args.model=='informer' or self.args.model=='informerstack':
+        if self.args.model == 'informer' or self.args.model=='informerstack':
             e_layers = self.args.e_layers if self.args.model=='informer' else self.args.s_layers
             model = model_dict[self.args.model](
                 self.args.enc_in,
@@ -51,10 +55,10 @@ class Exp_Informer(Exp_Basic):
                 self.args.distil,
                 self.args.mix,
                 self.device
-            ).float()
+            )  # mf-这里把float去掉了
         
         if self.args.use_multi_gpu and self.args.use_gpu:
-            model = nn.DataParallel(model, device_ids=self.args.device_ids)
+            model = paddle.DataParallel(model)
         return model
 
     def _get_data(self, flag):
@@ -103,11 +107,11 @@ class Exp_Informer(Exp_Basic):
         return data_set, data_loader
 
     def _select_optimizer(self):
-        model_optim = optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
+        model_optim = optimizer.Adam(learning_rate=self.args.learning_rate, parameters=self.model.parameters())
         return model_optim
     
     def _select_criterion(self):
-        criterion =  nn.MSELoss()
+        criterion = nn.MSELoss()
         return criterion
 
     def vali(self, vali_data, vali_loader, criterion):
@@ -140,7 +144,7 @@ class Exp_Informer(Exp_Basic):
         criterion =  self._select_criterion()
 
         # if self.args.use_amp:  # mf-windows中不需要加这个，容易崩，Linus可以加
-        #     scaler = torch.cuda.amp.GradScaler()
+        #     scaler = torch.cuda.amp.GradScaler()  # mf-这里暂时没有改
 
         for epoch in range(self.args.train_epochs):
             iter_count = 0
@@ -151,7 +155,7 @@ class Exp_Informer(Exp_Basic):
             for i, (batch_x,batch_y,batch_x_mark,batch_y_mark) in enumerate(train_loader):
                 iter_count += 1
                 
-                model_optim.zero_grad()
+                model_optim.clear_grad()  # mf-梯度清零，防止梯度累加
                 pred, true = self._process_one_batch(
                     train_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
                 loss = criterion(pred, true)
@@ -188,7 +192,7 @@ class Exp_Informer(Exp_Basic):
             adjust_learning_rate(model_optim, epoch+1, self.args)
             
         best_model_path = path+'/'+'checkpoint.pth'
-        self.model.load_state_dict(torch.load(best_model_path))
+        self.model.load_state_dict(paddle.load(best_model_path))
         
         return self.model
 
@@ -233,7 +237,7 @@ class Exp_Informer(Exp_Basic):
         if load:
             path = os.path.join(self.args.checkpoints, setting)
             best_model_path = path+'/'+'checkpoint.pth'
-            self.model.load_state_dict(torch.load(best_model_path))
+            self.model.load_state_dict(paddle.load(best_model_path))
 
         self.model.eval()
         
@@ -257,23 +261,24 @@ class Exp_Informer(Exp_Basic):
         return
 
     def _process_one_batch(self, dataset_object, batch_x, batch_y, batch_x_mark, batch_y_mark):
-        batch_x = batch_x.float().to(self.device)
-        batch_y = batch_y.float()
+        batch_x = batch_x
+        batch_y = batch_y
 
-        batch_x_mark = batch_x_mark.float().to(self.device)
-        batch_y_mark = batch_y_mark.float().to(self.device)
+        batch_x_mark = batch_x_mark
+        batch_y_mark = batch_y_mark
 
 
         # decoder input
         if self.args.padding==0:
-            dec_inp = torch.zeros([batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]]).float()
+            dec_inp = paddle.zeros([batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]], dtype='float64')
         elif self.args.padding==1:
-            dec_inp = torch.ones([batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]]).float()
-        dec_inp = torch.cat([batch_y[:,:self.args.label_len,:], dec_inp], dim=1).float().to(self.device)
+            dec_inp = paddle.ones([batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]])
+        para = batch_y[:,:self.args.label_len,:]
+        dec_inp = paddle.concat([batch_y[:,:self.args.label_len,:], dec_inp], axis=1)
         # dec_inp长度为72，其中前48为真实值，后面24个是要预测的值（用0初始化）
         # encoder - decoder
         if self.args.use_amp:
-            with torch.cuda.amp.autocast():
+            with paddle.amp.auto_cast():  # mf-这里还不确定
                 if self.args.output_attention:
                     outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                 else:

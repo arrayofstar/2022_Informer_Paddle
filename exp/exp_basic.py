@@ -1,5 +1,6 @@
 import os
-import torch
+# import torch
+import paddle
 import numpy as np
 
 class Exp_Basic(object):
@@ -15,10 +16,10 @@ class Exp_Basic(object):
     def _acquire_device(self):
         if self.args.use_gpu:
             os.environ["CUDA_VISIBLE_DEVICES"] = str(self.args.gpu) if not self.args.use_multi_gpu else self.args.devices
-            device = torch.device('cuda:{}'.format(self.args.gpu))
+            device = paddle.device.set_device('gpu:{}'.format(self.args.gpu))
             print('Use GPU: cuda:{}'.format(self.args.gpu))
         else:
-            device = torch.device('cpu')
+            device = paddle.device.set_device("cpu")
             print('Use CPU')
         return device
 
