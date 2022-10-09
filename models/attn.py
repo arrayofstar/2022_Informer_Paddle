@@ -53,12 +53,14 @@ class ProbAttention(nn.Layer):
         _, _, L_Q, _ = Q.shape
 
         # calculate the sampled Q_K
-        K_expand = K.unsqueeze(-3).expand(B, H, L_Q, L_K, E)  # mf-先增加一个维度，相当于复制，再扩充
+        K_expand = K.unsqueeze(-3)
+        K_expand = K_expand.broadcast_to([B, H, L_Q, L_K, E])  # mf-先增加一个维度，相当于复制，再扩充
         # print('K_expand.shape', K_expand.shape)
-        index_sample = paddle.randint(L_K, (L_Q, sample_k)) # real U = U_part(factor*ln(L_k))*L_q
-        K_sample = K_expand[:, :, paddle.arange(L_Q).unsqueeze(1), index_sample, :]
+        index_sample = paddle.randint(low=L_K,shape=(L_Q, sample_k)) # real U = U_part(factor*ln(L_k))*L_q
+        para = paddle.arange(L_Q).unsqueeze(1)
+        K_sample = K_expand[:, :, paddle.arange(L_Q).unsqueeze(1), index_sample, :]  # torch的切片方式与paddle不一样
         # print('K_sample', K_sample.shape)
-        Q_K_sample = paddle.matmul(Q.unsqueeze(-2), K_sample.transpose(-2, -1)).squeeze(-2)
+        Q_K_sample = paddle.matmul(Q.unsqueeze(-2), K_sample.transpose((0, 1, 2, 4, 3))).squeeze(-2)
         # print('Q_K_sample', Q_K_sample.shape)
 
         # find the Top_k query with sparisty measurement
@@ -108,9 +110,9 @@ class ProbAttention(nn.Layer):
         B, L_Q, H, D = queries.shape
         _, L_K, _, _ = keys.shape
 
-        queries = queries.transpose(2,1)
-        keys = keys.transpose(2,1)
-        values = values.transpose(2,1)
+        queries = paddle.transpose(queries, (0, 2, 1, 3))
+        keys = paddle.transpose(keys, (0, 2, 1, 3))
+        values = paddle.transpose(values, (0, 2, 1, 3))
 
         U_part = self.factor * np.ceil(np.log(L_K)).astype('int').item() # c*ln(L_k) mf-Key里要选的个数
         u = self.factor * np.ceil(np.log(L_Q)).astype('int').item() # c*ln(L_q) 
@@ -129,7 +131,7 @@ class ProbAttention(nn.Layer):
         # update the context with selected top_k queries
         context, attn = self._update_context(context, values, scores_top, index, L_Q, attn_mask)
         
-        return context.transpose(2,1).contiguous(), attn
+        return paddle.transpose(context, (0, 2, 1)).contiguous(), attn  # mf- contiguous还没有对应
 
 
 class AttentionLayer(nn.Layer):
@@ -153,9 +155,9 @@ class AttentionLayer(nn.Layer):
         _, S, _ = keys.shape
         H = self.n_heads
 
-        queries = self.query_projection(queries).view(B, L, H, -1)
-        keys = self.key_projection(keys).view(B, S, H, -1)
-        values = self.value_projection(values).view(B, S, H, -1)
+        queries = self.query_projection(queries).reshape([B, L, H, -1])
+        keys = self.key_projection(keys).reshape([B, S, H, -1])
+        values = self.value_projection(values).reshape([B, S, H, -1])
 
         out, attn = self.inner_attention(
             queries,
@@ -165,6 +167,6 @@ class AttentionLayer(nn.Layer):
         )
         if self.mix:
             out = out.transpose(2,1).contiguous()
-        out = out.view(B, L, -1)
+        out = out.reshape([B, L, -1])
 
         return self.out_projection(out), attn

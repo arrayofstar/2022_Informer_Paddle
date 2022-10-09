@@ -157,7 +157,8 @@ class Exp_Informer(Exp_Basic):
                 
                 model_optim.clear_grad()  # mf-梯度清零，防止梯度累加
                 pred, true = self._process_one_batch(
-                    train_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
+                    train_data, batch_x.astype('float32'), batch_y.astype('float32'),
+                    batch_x_mark.astype('float32'), batch_y_mark.astype('float32'))
                 loss = criterion(pred, true)
                 train_loss.append(loss.item())
                 
@@ -270,7 +271,7 @@ class Exp_Informer(Exp_Basic):
 
         # decoder input
         if self.args.padding==0:
-            dec_inp = paddle.zeros([batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]], dtype='float64')
+            dec_inp = paddle.zeros([batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]], dtype='float32')
         elif self.args.padding==1:
             dec_inp = paddle.ones([batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]])
         para = batch_y[:,:self.args.label_len,:]

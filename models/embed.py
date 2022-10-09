@@ -11,7 +11,7 @@ class PositionalEmbedding(nn.Layer):
     def __init__(self, d_model, max_len=5000):
         super(PositionalEmbedding, self).__init__()
         # Compute the positional encodings once in log space.
-        pe = paddle.zeros([max_len, d_model])  # mf-这里不确定
+        pe = paddle.zeros([max_len, d_model], dtype='float32')  # mf-这里不确定
         pe.stop_gradient = True  # mf-这里不确定
 
         position = paddle.arange(0, max_len, dtype='float32').unsqueeze(1)
@@ -24,14 +24,15 @@ class PositionalEmbedding(nn.Layer):
         self.register_buffer('pe', pe)
 
     def forward(self, x):
-        return self.pe[:, :x.size(1)]
+        para = x.shape[1]
+        return self.pe[:, :x.shape[1]]
 
 class TokenEmbedding(nn.Layer):
     def __init__(self, c_in, d_model):
         super(TokenEmbedding, self).__init__()
         padding = 1 if paddle.__version__>='1.5.0' else 2
         self.tokenConv = nn.Conv1D(in_channels=c_in, out_channels=d_model,
-                                    kernel_size=3, padding=padding, padding_mode='circular')
+                                    kernel_size=3, padding=padding, padding_mode='circular', bias_attr=True)
         # mf-为解决的问题
         # for m in self.modules():
         #     if isinstance(m, nn.Conv1D):
@@ -39,9 +40,9 @@ class TokenEmbedding(nn.Layer):
 
     def forward(self, x):
         x = x
-        x = paddle.reshape(x, shape=[32,12,96])  # mf-这里还没有找到对应的函数 x.permute(0, 2, 1)
+        x = paddle.transpose(x, (0, 2, 1))  # mf-这里还没有找到对应的函数 x.permute(0, 2, 1)
         x = self.tokenConv(x)
-        x = paddle.transpose(x, perm=[0, 2, 1])# mf这里非常不确定
+        x = paddle.transpose(x, (0, 2, 1))# mf这里非常不确定
         return x
 
 class FixedEmbedding(nn.Layer):
@@ -111,6 +112,9 @@ class DataEmbedding(nn.Layer):
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x, x_mark):
+        x1 = self.value_embedding(x)
+        x2 = self.position_embedding(x)
+        x3 = self.temporal_embedding(x_mark)
         x = self.value_embedding(x) + self.position_embedding(x) + self.temporal_embedding(x_mark)
         
         return self.dropout(x)
