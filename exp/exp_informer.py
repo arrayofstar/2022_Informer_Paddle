@@ -49,8 +49,7 @@ class Exp_Informer(Exp_Basic):
                 self.args.activation,
                 self.args.output_attention,
                 self.args.distil,
-                self.args.mix,
-                self.device
+                self.args.mix
             )  # mf-这里把float去掉了
         
         if self.args.use_multi_gpu and self.args.use_gpu:
@@ -66,6 +65,7 @@ class Exp_Informer(Exp_Basic):
             'ETTm1':Dataset_ETT_minute,
             'ETTm2':Dataset_ETT_minute,
             'WTH':Dataset_Custom,
+            'WTH_small': Dataset_Custom,
             'ECL':Dataset_Custom,
             'Solar':Dataset_Custom,
             'custom':Dataset_Custom,
@@ -236,7 +236,7 @@ class Exp_Informer(Exp_Basic):
         if load:
             path = os.path.join(self.args.checkpoints, setting)
             best_model_path = path+'/'+'checkpoint.pth'
-            self.model.load_state_dict(paddle.load(best_model_path))
+            self.model.set_state_dict(paddle.load(best_model_path))
 
         self.model.eval()
         
