@@ -12,8 +12,10 @@ def adjust_learning_rate(optimizer, epoch, args):
         }
     if epoch in lr_adjust.keys():
         lr = lr_adjust[epoch]
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = lr
+        for param_group in optimizer._param_groups:
+            # param_group['lr'] = lr
+            # param_group['learning_rate'] = lr
+            param_group.optimize_attr['learning_rate'] = lr
         print('Updating learning rate to {}'.format(lr))
 
 class EarlyStopping:
@@ -45,6 +47,7 @@ class EarlyStopping:
         if self.verbose:
             print(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
         paddle.save(model.state_dict(), f+'/'+'checkpoint.pth')
+        paddle.save(model.state_dict(), f + '/' + 'model.pdparams')  # mf-添加一个paddle的保存方式
         self.val_loss_min = val_loss
 
 class dotdict(dict):
@@ -63,13 +66,13 @@ class StandardScaler():
         self.std = data.std(0)
 
     def transform(self, data):
-        mean = paddle.to_tensor(self.mean).type_as(data).to(data.device) if paddle.is_tensor(data) else self.mean
-        std = paddle.to_tensor(self.std).type_as(data).to(data.device) if paddle.is_tensor(data) else self.std
+        mean = paddle.to_tensor(self.mean).astype('float32') if paddle.is_tensor(data) else self.mean
+        std = paddle.to_tensor(self.std).astype('float32') if paddle.is_tensor(data) else self.std
         return (data - mean) / std
 
     def inverse_transform(self, data):
-        mean = paddle.to_tensor(self.mean).type_as(data).to(data.device) if paddle.is_tensor(data) else self.mean
-        std = paddle.to_tensor(self.std).type_as(data).to(data.device) if paddle.is_tensor(data) else self.std
+        mean = paddle.to_tensor(self.mean).astype('float32') if paddle.is_tensor(data) else self.mean
+        std = paddle.to_tensor(self.std).astype('float32') if paddle.is_tensor(data) else self.std
         if data.shape[-1] != mean.shape[-1]:
             mean = mean[-1:]
             std = std[-1:]

@@ -9,9 +9,9 @@ parser = argparse.ArgumentParser(description='[Informer] Long Sequences Forecast
 parser.add_argument('--model', type=str, default='informer',
                     help='model of experiment, options: [informer, informerstack, informerlight(TBD)]')
 
-parser.add_argument('--data', type=str, default='WTH', help='data')
+parser.add_argument('--data', type=str, default='WTH-small', help='data')
 parser.add_argument('--root_path', type=str, default='./data/', help='root path of the data file')
-parser.add_argument('--data_path', type=str, default='WTH.csv', help='data file')
+parser.add_argument('--data_path', type=str, default='WTH-small.csv', help='data file')
 parser.add_argument('--features', type=str, default='M', help='forecasting task, options:[M, S, MS]; '
                                                               'M:multivariate predict multivariate, '
                                                               'S:univariate predict univariate, '
@@ -88,6 +88,8 @@ data_parser = {
     'ETTm2':{'data':'ETTm2.csv','T':'OT','M':[7,7,7],'S':[1,1,1],'MS':[7,7,1]},
     'WTH':{'data':'WTH.csv','T':'WetBulbCelsius','M':[12,12,12],'S':[1,1,1],'MS':[12,12,1],
            'itr':1, 'train_epochs':3, 'do_predict':True},
+    'WTH-small':{'data':'WTH-small.csv','T':'WetBulbCelsius','M':[12,12,12],'S':[1,1,1],'MS':[12,12,1],
+               'itr':1, 'train_epochs':3, 'do_predict':True},
     'ECL':{'data':'ECL.csv','T':'MT_320','M':[321,321,321],'S':[1,1,1],'MS':[321,321,1]},
     'Solar':{'data':'solar_AL.csv','T':'POWER_136','M':[137,137,137],'S':[1,1,1],'MS':[137,137,1]},
     'my_data':{'data':'solar_AL.csv','T':'POWER_136','M':[64,64,64],'S':[1,1,1],'MS':[64,64,1]},

@@ -228,7 +228,9 @@ class Dataset_Custom(Dataset):
             cols=self.cols.copy()
             cols.remove(self.target)
         else:
-            cols = list(df_raw.columns); cols.remove(self.target); cols.remove('date')
+            cols = list(df_raw.columns)
+            cols.remove(self.target)
+            cols.remove('date')
         df_raw = df_raw[['date']+cols+[self.target]]
         # mf注-数据切分-这里需要根据需求来改
         num_train = int(len(df_raw)*0.7)
@@ -251,12 +253,12 @@ class Dataset_Custom(Dataset):
             data = self.scaler.transform(df_data.values)
         else:
             data = df_data.values
-            
+        # 日期时间特征
         df_stamp = df_raw[['date']][border1:border2]
         df_stamp['date'] = pd.to_datetime(df_stamp.date)
         data_stamp = time_features(df_stamp, timeenc=self.timeenc, freq=self.freq)
 
-        self.data_x = data[border1:border2]
+        self.data_x = data[border1:border2]  # 提取训练数据
         if self.inverse:
             self.data_y = df_data.values[border1:border2]
         else:

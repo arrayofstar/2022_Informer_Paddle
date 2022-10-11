@@ -25,24 +25,21 @@ class PositionalEmbedding(nn.Layer):
 
     def forward(self, x):
         para = x.shape[1]
-        return self.pe[:, :x.shape[1]]
+        return self.pe[:, :x.shape[1], :]   # mf-为什么要取最后96个pe？
 
 class TokenEmbedding(nn.Layer):
     def __init__(self, c_in, d_model):
         super(TokenEmbedding, self).__init__()
         padding = 1 if paddle.__version__>='1.5.0' else 2
         self.tokenConv = nn.Conv1D(in_channels=c_in, out_channels=d_model,
-                                    kernel_size=3, padding=padding, padding_mode='circular', bias_attr=True)
-        # mf-为解决的问题
-        # for m in self.modules():
-        #     if isinstance(m, nn.Conv1D):
-        #         nn.initializer.KaimingNormal(m.weight,mode='fan_in',nonlinearity='leaky_relu')  # mf-这里不确定
+                                   kernel_size=3, padding=padding, padding_mode='circular', bias_attr=True,
+                                   weight_attr=nn.initializer.KaimingNormal())
 
     def forward(self, x):
         x = x
-        x = paddle.transpose(x, (0, 2, 1))  # mf-这里还没有找到对应的函数 x.permute(0, 2, 1)
+        x = paddle.transpose(x, [0, 2, 1])  # mf-这里还没有找到对应的函数 x.permute(0, 2, 1)
         x = self.tokenConv(x)
-        x = paddle.transpose(x, (0, 2, 1))# mf这里非常不确定
+        x = paddle.transpose(x, [0, 2, 1])
         return x
 
 class FixedEmbedding(nn.Layer):
@@ -96,7 +93,7 @@ class TimeFeatureEmbedding(nn.Layer):
 
         freq_map = {'h':4, 't':5, 's':6, 'm':1, 'a':1, 'w':2, 'd':3, 'b':3}
         d_inp = freq_map[freq]
-        self.embed = nn.Linear(d_inp, d_model)
+        self.embed = nn.Linear(d_inp, d_model)  # mf-感觉有问题
     
     def forward(self, x):
         return self.embed(x)
@@ -112,9 +109,9 @@ class DataEmbedding(nn.Layer):
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x, x_mark):
-        x1 = self.value_embedding(x)
-        x2 = self.position_embedding(x)
-        x3 = self.temporal_embedding(x_mark)
-        x = self.value_embedding(x) + self.position_embedding(x) + self.temporal_embedding(x_mark)
+        x1 = self.value_embedding(x)  # 数值编码
+        x2 = self.position_embedding(x)  # 位置编码
+        x3 = self.temporal_embedding(x_mark)  # 时间编码
+        x = x1 + x2 + x3
         
         return self.dropout(x)

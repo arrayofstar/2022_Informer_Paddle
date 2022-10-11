@@ -32,7 +32,7 @@ class Informer(nn.Layer):
             [
                 EncoderLayer(
                     AttentionLayer(Attn(False, factor, attention_dropout=dropout, output_attention=output_attention), 
-                                d_model, n_heads, mix=False),
+                                   d_model, n_heads, mix=False),
                     d_model,
                     d_ff,
                     dropout=dropout,

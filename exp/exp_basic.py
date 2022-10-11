@@ -1,5 +1,4 @@
 import os
-# import torch
 import paddle
 import numpy as np
 

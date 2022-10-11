@@ -8,7 +8,7 @@ import paddle.nn.functional as F
 import numpy as np
 
 from math import sqrt
-from utils.masking import TriangularCausalMask, ProbMask
+from utils.masking import TriangularCausalMask, ProbMask, masked_fill
 
 class FullAttention(nn.Layer):
     def __init__(self, mask_flag=True, factor=5, scale=None, attention_dropout=0.1, output_attention=False):
@@ -30,13 +30,13 @@ class FullAttention(nn.Layer):
 
             scores.masked_fill_(attn_mask.mask, -np.inf)
 
-        A = self.dropout(nn.Softmax(scale * scores, dim=-1))
+        A = self.dropout(F.softmax(scale * scores, axis=-1))
         V = paddle.einsum("bhls,bshd->blhd", A, values)
         
         if self.output_attention:
-            return (V.contiguous(), A)
+            return (V, A)
         else:
-            return (V.contiguous(), None)
+            return (V, None)
 
 class ProbAttention(nn.Layer):
     def __init__(self, mask_flag=True, factor=5, scale=None, attention_dropout=0.1, output_attention=False):
@@ -56,23 +56,25 @@ class ProbAttention(nn.Layer):
         K_expand = K.unsqueeze(-3)
         K_expand = K_expand.broadcast_to([B, H, L_Q, L_K, E])  # mf-先增加一个维度，相当于复制，再扩充
         # print('K_expand.shape', K_expand.shape)
-        index_sample = paddle.randint(low=L_K,shape=(L_Q, sample_k)) # real U = U_part(factor*ln(L_k))*L_q
-        para = paddle.arange(L_Q).unsqueeze(1)
-        K_sample = K_expand[:, :, paddle.arange(L_Q).unsqueeze(1), index_sample, :]  # torch的切片方式与paddle不一样
+        index_sample = paddle.randint(high=L_K, shape=[L_Q, sample_k]) # real U = U_part(factor*ln(L_k))*L_q
+        index_sample = paddle.tile(index_sample[None, None, :, :, None], repeat_times=[B, H, 1, 1, E])
+        # 构建25的随机数来随机选25个K来计算Q的分布大小
+        # K_sample = K_expand[:, :, paddle.arange(L_Q).unsqueeze(1), index_sample, :]  # torch的切片方式与paddle不一样
+        # mf-这里的索引采样未必合适
+        K_sample = paddle.take_along_axis(K_expand, index_sample, axis=3)
         # print('K_sample', K_sample.shape)
-        Q_K_sample = paddle.matmul(Q.unsqueeze(-2), K_sample.transpose((0, 1, 2, 4, 3))).squeeze(-2)
+        Q_K_sample = paddle.matmul(Q.unsqueeze(-2), K_sample.transpose([0, 1, 2, 4, 3])).squeeze(-2)
         # print('Q_K_sample', Q_K_sample.shape)
 
         # find the Top_k query with sparisty measurement
-        M = Q_K_sample.max(-1)[0] - paddle.divide(Q_K_sample.sum(-1), L_K)  # 96个Q和25个K之间的关系
+        M = Q_K_sample.max(-1) - Q_K_sample.sum(-1)/L_K  # 96个Q和25个K之间的关系
         # print('Q_K_sample.max(-1)[0].shape', Q_K_sample.max(-1)[0].shape)
         M_top = M.topk(n_top, sorted=False)[1]
 
         # use the reduced Q to calculate Q_K
-        Q_reduce = Q[paddle.arange(B)[:, None, None],
-                     paddle.arange(H)[None, :, None],
-                     M_top, :] # factor*ln(L_q)
-        Q_K = paddle.matmul(Q_reduce, K.transpose(-2, -1)) # factor*ln(L_q)*L_k
+        # Q_reduce = Q[:,:,M_top, :] # factor*ln(L_q)
+        Q_reduce = paddle.take_along_axis(Q, M_top[:, :, :, None], axis=-2)
+        Q_K = paddle.matmul(Q_reduce, K.transpose([0,1,3,2])) # factor*ln(L_q)*L_k
 
         return Q_K, M_top
 
@@ -80,28 +82,29 @@ class ProbAttention(nn.Layer):
         B, H, L_V, D = V.shape
         if not self.mask_flag:
             # V_sum = V.sum(dim=-2)
-            V_sum = V.mean(dim=-2)   # 对V求均值-交给之前没有选中的V
-            contex = V_sum.unsqueeze(-2).expand(B, H, L_Q, V_sum.shape[-1]).clone()
+            V_sum = V.mean(axis=-2)   # 对V求均值-交给之前没有选中的V
+            contex = V_sum.unsqueeze(-2).broadcast_to([B, H, L_Q, V_sum.shape[-1]]).clone()
         else: # use mask
             assert(L_Q == L_V) # requires that L_Q == L_V, i.e. for self-attention only
-            contex = V.cumsum(dim=-2)
+            contex = V.cumsum(axis=-2)
         return contex
 
     def _update_context(self, context_in, V, scores, index, L_Q, attn_mask):
         B, H, L_V, D = V.shape
 
         if self.mask_flag:
-            attn_mask = ProbMask(B, H, L_Q, index, scores, device=V.device)
-            scores.masked_fill_(attn_mask.mask, -np.inf)
+            attn_mask = ProbMask(B, H, L_Q, index, scores, device=V.place)  # 这里还没有改
+            # scores.masked_fill_(attn_mask.mask, -np.inf)  # paddle中没有masked_fill_函数因此在ProbMask添加了函数实现
+            scores = masked_fill(scores, attn_mask.mask, -np.inf)
 
-        attn = nn.Softmax(scores, dim=-1) # nn.Softmax(dim=-1)(scores)
+        attn = F.softmax(scores, axis=-1) # nn.Softmax(dim=-1)(scores)
+        index = paddle.tile(index[:, :, :, None],[1, 1, 1, D])
+        context_in = paddle.put_along_axis(context_in, index, paddle.matmul(attn, V), axis=2)  # mf-这里的替换不太确定
 
-        context_in[paddle.arange(B)[:, None, None],
-                   paddle.arange(H)[None, :, None],
-                   index, :] = paddle.matmul(attn, V).type_as(context_in)
         if self.output_attention:
-            attns = (paddle.ones([B, H, L_V, L_V])/L_V).type_as(attn).to(attn.device)
-            attns[paddle.arange(B)[:, None, None], paddle.arange(H)[None, :, None], index, :] = attn
+            attn_one = paddle.ones([B, H, L_V, L_V])/L_V
+            # attns[paddle.arange(B)[:, None, None], paddle.arange(H)[None, :, None], index, :] = attn
+            attns = paddle.put_along_axis(attn_one, index, attn, axis=-2)
             return (context_in, attns)
         else:
             return (context_in, None)
@@ -130,8 +133,9 @@ class ProbAttention(nn.Layer):
         context = self._get_initial_context(values, L_Q)
         # update the context with selected top_k queries
         context, attn = self._update_context(context, values, scores_top, index, L_Q, attn_mask)
-        
-        return paddle.transpose(context, (0, 2, 1)).contiguous(), attn  # mf- contiguous还没有对应
+
+        context = paddle.transpose(context, [0, 2, 1, 3])
+        return context, attn
 
 
 class AttentionLayer(nn.Layer):
@@ -166,7 +170,7 @@ class AttentionLayer(nn.Layer):
             attn_mask
         )
         if self.mix:
-            out = out.transpose(2,1).contiguous()
+            out = paddle.transpose(out,[0,2,1,3])
         out = out.reshape([B, L, -1])
 
         return self.out_projection(out), attn

@@ -19,11 +19,11 @@ class ConvLayer(nn.Layer):
         self.maxPool = nn.MaxPool1D(kernel_size=3, stride=2, padding=1)
 
     def forward(self, x):
-        x = self.downConv(x.permute(0, 2, 1))
+        x = self.downConv(x.transpose([0, 2, 1]))
         x = self.norm(x)
         x = self.activation(x)
         x = self.maxPool(x)
-        x = x.transpose(1,2)
+        x = x.transpose([0,2,1])
         return x
 
 class EncoderLayer(nn.Layer):
@@ -49,10 +49,10 @@ class EncoderLayer(nn.Layer):
             attn_mask = attn_mask
         )
         x = x + self.dropout(new_x)  # mf-残差连接
-        # mf-后面这里的操作还不是很容易去理解
+        # mf-后面这里的操作还不是很容易去理解,好像也是残差连接
         y = x = self.norm1(x)
-        y = self.dropout(self.activation(self.conv1(y.transpose(-1,1))))
-        y = self.dropout(self.conv2(y).transpose(-1,1))
+        y = self.dropout(self.activation(self.conv1(y.transpose([0,2,1]))))
+        y = self.dropout(self.conv2(y).transpose([0,2,1]))
 
         return self.norm2(x+y), attn
 
@@ -71,6 +71,7 @@ class Encoder(nn.Layer):
                 x, attn = attn_layer(x, attn_mask=attn_mask)
                 x = conv_layer(x)
                 attns.append(attn)
+            para = self.attn_layers[-1]
             x, attn = self.attn_layers[-1](x, attn_mask=attn_mask)
             attns.append(attn)
         else:

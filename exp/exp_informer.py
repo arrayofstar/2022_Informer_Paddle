@@ -7,10 +7,6 @@ from utils.metrics import metric
 
 import numpy as np
 
-# import torch
-# import torch.nn as nn
-# from torch import optim
-# from torch.utils.data import DataLoader
 import paddle
 import paddle.nn as nn
 from paddle import optimizer
@@ -119,7 +115,8 @@ class Exp_Informer(Exp_Basic):
         total_loss = []
         for i, (batch_x,batch_y,batch_x_mark,batch_y_mark) in enumerate(vali_loader):
             pred, true = self._process_one_batch(
-                vali_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
+                vali_data, batch_x.astype('float32'), batch_y.astype('float32'),
+                batch_x_mark.astype('float32'), batch_y_mark.astype('float32'))
             loss = criterion(pred.detach().cpu(), true.detach().cpu())
             total_loss.append(loss)
         total_loss = np.average(total_loss)
@@ -143,25 +140,25 @@ class Exp_Informer(Exp_Basic):
         model_optim = self._select_optimizer()
         criterion =  self._select_criterion()
 
-        # if self.args.use_amp:  # mf-windows中不需要加这个，容易崩，Linus可以加
-        #     scaler = torch.cuda.amp.GradScaler()  # mf-这里暂时没有改
+        if self.args.use_amp:  # mf-windows中不需要加这个，容易崩，Linus可以加
+            scaler = torch.cuda.amp.GradScaler()  # mf-这里暂时没有改
 
         for epoch in range(self.args.train_epochs):
             iter_count = 0
             train_loss = []
-            
+
             self.model.train()
             epoch_time = time.time()
             for i, (batch_x,batch_y,batch_x_mark,batch_y_mark) in enumerate(train_loader):
                 iter_count += 1
-                
+
                 model_optim.clear_grad()  # mf-梯度清零，防止梯度累加
                 pred, true = self._process_one_batch(
                     train_data, batch_x.astype('float32'), batch_y.astype('float32'),
                     batch_x_mark.astype('float32'), batch_y_mark.astype('float32'))
                 loss = criterion(pred, true)
                 train_loss.append(loss.item())
-                
+
                 if (i+1) % 100==0:
                     print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
                     speed = (time.time()-time_now)/iter_count
@@ -169,14 +166,14 @@ class Exp_Informer(Exp_Basic):
                     print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
                     iter_count = 0
                     time_now = time.time()
-                
-                if self.args.use_amp:
-                    scaler.scale(loss).backward()
-                    scaler.step(model_optim)
-                    scaler.update()
-                else:
-                    loss.backward()
-                    model_optim.step()
+
+                # if self.args.use_amp:
+                #     scaler.scale(loss).backward()
+                #     scaler.step(model_optim)
+                #     scaler.update()
+                # else:
+                loss.backward()
+                model_optim.step()
 
             print("Epoch: {} cost time: {}".format(epoch+1, time.time()-epoch_time))
             train_loss = np.average(train_loss)
@@ -193,7 +190,7 @@ class Exp_Informer(Exp_Basic):
             adjust_learning_rate(model_optim, epoch+1, self.args)
             
         best_model_path = path+'/'+'checkpoint.pth'
-        self.model.load_state_dict(paddle.load(best_model_path))
+        self.model.set_state_dict(paddle.load(best_model_path))
         
         return self.model
 
@@ -207,7 +204,8 @@ class Exp_Informer(Exp_Basic):
         
         for i, (batch_x,batch_y,batch_x_mark,batch_y_mark) in enumerate(test_loader):
             pred, true = self._process_one_batch(
-                test_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
+                test_data, batch_x.astype('float32'), batch_y.astype('float32'),
+                batch_x_mark.astype('float32'), batch_y_mark.astype('float32'))
             preds.append(pred.detach().cpu().numpy())
             trues.append(true.detach().cpu().numpy())
 
@@ -246,7 +244,8 @@ class Exp_Informer(Exp_Basic):
         
         for i, (batch_x,batch_y,batch_x_mark,batch_y_mark) in enumerate(pred_loader):
             pred, true = self._process_one_batch(
-                pred_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
+                pred_data, batch_x.astype('float32'), batch_y.astype('float32'),
+                batch_x_mark.astype('float32'), batch_y_mark.astype('float32'))
             preds.append(pred.detach().cpu().numpy())
 
         preds = np.array(preds)
@@ -262,19 +261,19 @@ class Exp_Informer(Exp_Basic):
         return
 
     def _process_one_batch(self, dataset_object, batch_x, batch_y, batch_x_mark, batch_y_mark):
-        batch_x = batch_x
-        batch_y = batch_y
+        batch_x = batch_x.astype('float32')
+        batch_y = batch_y.astype('float32')
 
-        batch_x_mark = batch_x_mark
-        batch_y_mark = batch_y_mark
+        batch_x_mark = batch_x_mark.astype('float32')
+        batch_y_mark = batch_y_mark.astype('float32')
 
 
         # decoder input
         if self.args.padding==0:
             dec_inp = paddle.zeros([batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]], dtype='float32')
         elif self.args.padding==1:
-            dec_inp = paddle.ones([batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]])
-        para = batch_y[:,:self.args.label_len,:]
+            dec_inp = paddle.ones([batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]], dtype='float32')
+        # para = batch_y[:,:self.args.label_len,:]
         dec_inp = paddle.concat([batch_y[:,:self.args.label_len,:], dec_inp], axis=1)
         # dec_inp长度为72，其中前48为真实值，后面24个是要预测的值（用0初始化）
         # encoder - decoder
@@ -292,6 +291,6 @@ class Exp_Informer(Exp_Basic):
         if self.args.inverse:
             outputs = dataset_object.inverse_transform(outputs)
         f_dim = -1 if self.args.features=='MS' else 0
-        batch_y = batch_y[:,-self.args.pred_len:,f_dim:].to(self.device)
+        batch_y = batch_y[:,-self.args.pred_len:,f_dim:]
 
         return outputs, batch_y
