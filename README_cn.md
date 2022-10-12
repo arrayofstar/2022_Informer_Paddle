@@ -2,6 +2,15 @@
 
 2022年飞桨论文复现挑战赛（第七期）第46题——2022_PaddleChallenge(7th)-46
 
+**简体中文** | [English](./README_en.md)
+
+------------------------------------------------------------------------------------------
+
+<p align="center">
+  <a href=""><img src="https://img.shields.io/badge/python-3.7+-aff.svg"></a>
+  <a href=""><img src="https://img.shields.io/badge/paddlepaddle-2.3.0+-aff.svg"></a>
+</p>
+
 ## 一、简介
 
 本项目基于paddlepaddle框架复现Informer，Informer是一种新的长时间序列预测模型，基于编码器和解码器的transformer架构。
@@ -28,9 +37,14 @@
 
 **项目aistudio地址：**
 
-- 
+- https://aistudio.baidu.com/aistudio/projectdetail/4719840
 
 ## 二、复现精度
+
+| 数据集 | 序列长度 | 标签长度 | 预测长度 | paddle-MSE | paddle-MAE | 论文-MSE | 论文MAE |
+| ------ | -------- | -------- | -------- | ---------- | ---------- | -------- | ------- |
+|        |          |          |          |            |            |          |         |
+|        |          |          |          |            |            |          |         |
 
 non
 ## 三、数据集
