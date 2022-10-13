@@ -155,8 +155,9 @@ Weather数据集：WTH.csv
 
 <p align="center">
 <b>Table 1.</b> The Informer network components in details
-<img src=".\img\Informer_network_detail.png" height = "300" alt="" align=center />
 <br><br>
+<img src=".\img\Informer_network_detail.png" height = "300" alt="" align=center />
+</p>
 
 ## 8、后面的任务
 
