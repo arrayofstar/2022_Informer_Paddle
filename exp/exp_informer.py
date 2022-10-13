@@ -140,8 +140,8 @@ class Exp_Informer(Exp_Basic):
         model_optim = self._select_optimizer()
         criterion =  self._select_criterion()
 
-        if self.args.use_amp:  # mf-windows中不需要加这个，容易崩，Linus可以加
-            scaler = torch.cuda.amp.GradScaler()  # mf-这里暂时没有改
+        # if self.args.use_amp:  # mf-windows中不需要加这个，容易崩，Linus可以加
+        #     scaler = torch.cuda.amp.GradScaler()  # mf-这里暂时没有改
 
         for epoch in range(self.args.train_epochs):
             iter_count = 0
@@ -167,7 +167,7 @@ class Exp_Informer(Exp_Basic):
                     iter_count = 0
                     time_now = time.time()
 
-                # if self.args.use_amp:
+                # if paddle.args.use_amp:
                 #     scaler.scale(loss).backward()
                 #     scaler.step(model_optim)
                 #     scaler.update()

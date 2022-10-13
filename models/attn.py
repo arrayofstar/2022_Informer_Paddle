@@ -1,6 +1,3 @@
-# import torch
-# import torch.nn as nn
-# import torch.nn.functional as F
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
@@ -98,13 +95,14 @@ class ProbAttention(nn.Layer):
             scores = masked_fill(scores, attn_mask.mask, -np.inf)
 
         attn = F.softmax(scores, axis=-1) # nn.Softmax(dim=-1)(scores)
-        index = paddle.tile(index[:, :, :, None],[1, 1, 1, D])
-        context_in = paddle.put_along_axis(context_in, index, paddle.matmul(attn, V), axis=2)  # mf-这里的替换不太确定
+        index_in = paddle.tile(index[:, :, :, None],[1, 1, 1, D])
+        context_in = paddle.put_along_axis(context_in, index_in, paddle.matmul(attn, V), axis=2)  # mf-这里的替换不太确定
 
         if self.output_attention:
             attn_one = paddle.ones([B, H, L_V, L_V])/L_V
+            index_attn = paddle.tile(index[:, :, :, None], [1, 1, 1, L_V])
             # attns[paddle.arange(B)[:, None, None], paddle.arange(H)[None, :, None], index, :] = attn
-            attns = paddle.put_along_axis(attn_one, index, attn, axis=-2)
+            attns = paddle.put_along_axis(attn_one, index_attn, attn, axis=-2)
             return (context_in, attns)
         else:
             return (context_in, None)
@@ -170,7 +168,7 @@ class AttentionLayer(nn.Layer):
             attn_mask
         )
         if self.mix:
-            out = paddle.transpose(out,[0,2,1,3])
+            out = paddle.transpose(out, [0, 2, 1, 3])
         out = out.reshape([B, L, -1])
 
         return self.out_projection(out), attn

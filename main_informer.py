@@ -1,18 +1,19 @@
 import argparse
-# import os
+import os
 import paddle
 
 from exp.exp_informer import Exp_Informer
+
 
 parser = argparse.ArgumentParser(description='[Informer] Long Sequences Forecasting')
 
 parser.add_argument('--model', type=str, default='informer',
                     help='model of experiment, options: [informer, informerstack, informerlight(TBD)]')
 
-parser.add_argument('--data', type=str, default='WTH_small', help='data')
+parser.add_argument('--data', type=str, default='ETTh1', help='data')
 parser.add_argument('--root_path', type=str, default='./data/', help='root path of the data file')
-parser.add_argument('--data_path', type=str, default='WTH_small.csv', help='data file')
-parser.add_argument('--features', type=str, default='M', help='forecasting task, options:[M, S, MS]; '
+parser.add_argument('--data_path', type=str, default='ETTh1.csv', help='data file')
+parser.add_argument('--features', type=str, default='MS', help='forecasting task, options:[M, S, MS]; '
                                                               'M:multivariate predict multivariate, '
                                                               'S:univariate predict univariate, '
                                                               'MS:multivariate predict univariate')
@@ -25,7 +26,7 @@ parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='l
 
 parser.add_argument('--seq_len', type=int, default=96, help='input sequence length of Informer encoder')
 parser.add_argument('--label_len', type=int, default=48, help='start token length of Informer decoder')
-parser.add_argument('--pred_len', type=int, default=24, help='prediction sequence length')
+parser.add_argument('--pred_len', type=int, default=48, help='prediction sequence length')
 # Informer decoder input: concat[start token series(label_len), zero padding series(pred_len)]
 
 parser.add_argument('--enc_in', type=int, default=7, help='encoder input size')
@@ -47,15 +48,15 @@ parser.add_argument('--attn', type=str, default='prob', help='attention used in 
 parser.add_argument('--embed', type=str, default='timeF', help='time features encoding, options:'
                                                                '[timeF, fixed, learned]')
 parser.add_argument('--activation', type=str, default='gelu', help='activation')
-parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
-parser.add_argument('--do_predict', action='store_true', help='whether to predict unseen future data')
+parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder', default=True)
+parser.add_argument('--do_predict', action='store_true', help='whether to predict unseen future data', default=True)
 # mf-mix没有特别的解释
 parser.add_argument('--mix', action='store_false', help='use mix attention in generative decoder', default=True)
 parser.add_argument('--cols', type=str, nargs='+', help='certain cols from the data files as the input features')
 # mf-window必须设置为0
 parser.add_argument('--num_workers', type=int, default=0, help='data loader num workers')
-parser.add_argument('--itr', type=int, default=2, help='experiments times')
-parser.add_argument('--train_epochs', type=int, default=6, help='train epochs')
+parser.add_argument('--itr', type=int, default=1, help='experiments times')
+parser.add_argument('--train_epochs', type=int, default=3, help='train epochs')
 parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
 parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
 parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
@@ -130,8 +131,8 @@ for ii in range(args.itr):
                               args.embed,
                               args.distil,
                               args.mix,
-                              args.des, ii)
-
+                              args.des,
+                              ii)
     exp = Exp(args)  # set experiments
     print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
     exp.train(setting)
