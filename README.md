@@ -56,7 +56,9 @@
 | ------ | -------- | -------- | -------- | ---------- | ---------- |
 | ETTh1  | 48       | 48       | 24       | 0.0998     | 0.2529     |
 | ETTh1  | 96       | 48       | 48       | 0.1390     | 0.3044     |
-| ETTh1  | 168      | 168      | 168      |            |            |
+| ETTh1  | 168      | 168      | 168      | 0.1307     | 0.2905     |
+| ETTh1  | 336      | 168      | 168      | 0.0768     | 0.2158     |
+|        |          |          |          |            |            |
 ## 三、数据集
 
 数据集置于./data/目录之下， 来源于论文源码中的所提供的[ETDataset](https://github.com/zhouhaoyi/ETDataset/blob/main/README_CN.md)和[百度云盘](https://pan.baidu.com/s/1wyaGUisUICYHnfkZzWCwyA?_at_=1665205285640#list/path=%2F),password: 6gan.
@@ -141,6 +143,10 @@ Weather数据集：WTH.csv
 | devices          | 多个gpu时的显卡ID（默认为 0,1,2,3）                          |
 
 ## 七、模型信息
+
+模型基于Transformer的架构，新增了ProbSparse Attention.
+
+自注意力得到会形成长尾分布，其中"激活"的q值有较高的得分，“懒惰” 的q值为拖尾。作者设计了ProbSparse Attention来选择"激活"的q值，而忽略“懒惰"的q值，这样就简化了计算，加快了速度。
 
 <p align="center">
 <img src=".\img\informer.png" height = "360" alt="" align=center />
