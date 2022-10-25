@@ -32,21 +32,23 @@ AI Studio Link: https://aistudio.baidu.com/aistudio/projectdetail/4719840
 
 ### Multivariate forecasting results
 
-| Datasets | seq_len | label_len | pred_len | paddle-MSE | paddle-MAE |
-| -------- | ------- | --------- | -------- | ---------- | ---------- |
-| ETTh1    | 48      | 48        | 24       | 0.8075     | 0.6871     |
-| ETTh1    | 96      | 48        | 48       | 1.1301     | 0.8598     |
-| ETTh1    | 168     | 168       | 168      | 1.1985     | 0.8621     |
+| Datasets | seq_len | label_len | pred_len | paddle-MSE          | paddle-MAE |
+| -------- | ------- | --------- | -------- |---------------------| ---------- |
+| ETTh1  | 48       | 48       | 24       | 0.7087              | 0.5966     |
+| ETTh1  | 96       | 48       | 48       | 1.1204              | 0.8598     |
+| ETTh1  | 168      | 168      | 168      | 1.1150              | 0.8304     |
+| ETTh1  | 336      | 168      | 168      | 1.2381              | 0.8738     |
+| ETTh1  | 336      | 336      | 720      | Insufficient memory |            |
 
 ### Univariate forecasting results.
 
 | Datasets | seq_len | label_len | pred_len | paddle-MSE | paddle-MAE |
 | -------- | ------- | --------- | -------- | ---------- | ---------- |
-| ETTh1    | 48      | 48        | 24       | 0.0998     | 0.2529     |
-| ETTh1    | 96      | 48        | 48       | 0.1390     | 0.3044     |
-| ETTh1    | 168     | 168       | 168      | 0.1307     | 0.2905     |
-| ETTh1    | 336     | 168       | 168      | 0.0768     | 0.2158     |
-|          |         |           |          |            |            |
+| ETTh1  | 48       | 48       | 24       | 0.0998     | 0.2529     |
+| ETTh1  | 96       | 48       | 48       | 0.1390     | 0.3044     |
+| ETTh1  | 168      | 168      | 168      | 0.1404     | 0.3029     |
+| ETTh1  | 336      | 168      | 168      | 0.0873     | 0.2278     |
+| ETTh1  | 336      | 336      | 720      | Insufficient memory   |            |
 
 ## 3、Datasets
 
@@ -60,13 +62,13 @@ ETDataset：ETTh1.csv、ETTh2.csv、ETTm1.csv、ETTm1.csv
 
 ECL Datasets：ECL.csv
 
-- 数据集维度：ECL(26304, 322)
-- 数据格式：csv，The first column is date，other 321 is features data。
+- shape：ECL(26304, 322)
+- data format：csv，The first column is date，other 321 is features data。
 
-Weather数据集：WTH.csv
+Weather Datasets：WTH.csv
 
-- 数据集维度：WTH(35064.13)
-- 数据格式：csv，The first column is date，other is features data。
+- shape：WTH(35064.13)
+- data format：csv，The first column is date，other is features data。
 
 ## 4、Environment
 

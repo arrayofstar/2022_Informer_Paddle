@@ -32,7 +32,7 @@
 
 - [[1] Haoyi Zhou, Shanghang Zhang, Jieqi Peng et al. Informer: Beyond Efficient Transformer for Long Sequence Time-Series Forecasting. The Thirty-Fifth {AAAI} Conference on Artificial Intelligence, {AAAI} 2021, Virtual Conference. (35)12, 11106-11115, 2021](https://arxiv.org/abs/2012.07436)
 
-**参考项目：**
+**项目源码：**
 
 - https://github.com/zhouhaoyi/Informer2020
 
@@ -42,23 +42,25 @@
 
 ## 二、复现精度
 
-### 多变量预测结果 - Multivariate forecasting results
+### 多变量预测结果 - Multivariate forecasting results（M）
 
 | 数据集 | 序列长度 | 标签长度 | 预测长度 | paddle-MSE | paddle-MAE |
 | ------ | -------- | -------- | -------- | ---------- | ---------- |
-| ETTh1  | 48       | 48       | 24       | 0.8075     | 0.6871     |
-| ETTh1  | 96       | 48       | 48       | 1.1301     | 0.8598     |
-| ETTh1  | 168      | 168      | 168      | 1.1985     | 0.8621     |
+| ETTh1  | 48       | 48       | 24       | 0.7087     | 0.5966     |
+| ETTh1  | 96       | 48       | 48       | 1.1204     | 0.8598     |
+| ETTh1  | 168      | 168      | 168      | 1.1150     | 0.8304     |
+| ETTh1  | 336      | 168      | 168      | 1.2381     | 0.8738     |
+| ETTh1  | 336      | 336      | 720      | 显存不足   |            |
 
-### 单变量预测结果 - Univariate forecasting results.
+### 单变量预测结果 - Univariate forecasting results （S）
 
 | 数据集 | 序列长度 | 标签长度 | 预测长度 | paddle-MSE | paddle-MAE |
 | ------ | -------- | -------- | -------- | ---------- | ---------- |
 | ETTh1  | 48       | 48       | 24       | 0.0998     | 0.2529     |
 | ETTh1  | 96       | 48       | 48       | 0.1390     | 0.3044     |
-| ETTh1  | 168      | 168      | 168      | 0.1307     | 0.2905     |
-| ETTh1  | 336      | 168      | 168      | 0.0768     | 0.2158     |
-|        |          |          |          |            |            |
+| ETTh1  | 168      | 168      | 168      | 0.1404     | 0.3029     |
+| ETTh1  | 336      | 168      | 168      | 0.0873     | 0.2278     |
+| ETTh1  | 336      | 336      | 720      | 显存不足   |            |
 ## 三、数据集
 
 数据集置于./data/目录之下， 来源于论文源码中的所提供的[ETDataset](https://github.com/zhouhaoyi/ETDataset/blob/main/README_CN.md)和[百度云盘](https://pan.baidu.com/s/1wyaGUisUICYHnfkZzWCwyA?_at_=1665205285640#list/path=%2F),password: 6gan.
@@ -169,7 +171,7 @@ Weather数据集：WTH.csv
 
 论文复现的要求：
 
-> univariate设定下，在ETTh, ETTm，Weather和ECL数据集上的MAE，在最长区间分别达到 0.431， 0.644， 0.466, 0.608; 
+> 在univariate设定下，在ETTh, ETTm，Weather和ECL数据集上的MAE，在最长区间分别达到 0.431， 0.644， 0.466, 0.608; 
 > 在multiplevariate设定下, 在ETTh, ETTm，Weather和ECL数据集上的MAE，在最长区间分别达到 1.473， 0.926， 0.731, 0.548
 
 目前虽然完成了代码的paddle复现，但是还有很多细节没有完全处理好，记录如下，作为后续的改进内容：
