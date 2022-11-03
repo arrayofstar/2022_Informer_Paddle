@@ -34,7 +34,7 @@ class TokenEmbedding(nn.Module):
                 nn.init.kaiming_normal_(m.weight,mode='fan_in',nonlinearity='leaky_relu')
 
     def forward(self, x):
-        x = self.tokenConv(x.permute(0, 2, 1)).transpose(1,2)
+        x = self.tokenConv(x.permute(0, 2, 1)).transpose(1, 2)
         return x
 
 class FixedEmbedding(nn.Module):

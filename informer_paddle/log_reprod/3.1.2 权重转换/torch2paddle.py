@@ -2,7 +2,8 @@
 # @Time    : 2022/10/30 11:01
 # @Author  : Dreamstar
 # @File    : torch2paddle.py
-# @Desc    : 对informer训练之后的权重进行转换
+# @Desc    : 对informer训练之后的权重进行转换，内容未完成，因为informer中没有预训练模型，
+# 这里代码可以等全部内容完成了之后，完成对最终训练模型的转化。
 
 from collections import OrderedDict
 

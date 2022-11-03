@@ -8,37 +8,38 @@ class PositionalEmbedding(nn.Layer):
     def __init__(self, d_model, max_len=5000):
         super(PositionalEmbedding, self).__init__()
         # Compute the positional encodings once in log space.
-        pe = paddle.zeros([max_len, d_model], dtype='float32')  # mf-这里不确定
-        pe.stop_gradient = True  # mf-这里不确定
+        position_embedding  = paddle.zeros([max_len, d_model], dtype='float32')
+        position_embedding .stop_gradient = True
 
         position = paddle.arange(0, max_len, dtype='float32').unsqueeze(1)
         div_term = (paddle.arange(0, d_model, 2, dtype='float32') * -(math.log(10000.0) / d_model)).exp()
 
-        pe[:, 0::2] = paddle.sin(position * div_term)
-        pe[:, 1::2] = paddle.cos(position * div_term)
+        position_embedding[:, 0::2] = paddle.sin(position * div_term)
+        position_embedding[:, 1::2] = paddle.cos(position * div_term)
 
-        pe = pe.unsqueeze(0)
-        self.register_buffer('pe', pe)
+        position_embedding = position_embedding .unsqueeze(0)
+        self.register_buffer('position_embedding', position_embedding )
 
     def forward(self, x):
-        para = x.shape[1]
-        return self.pe[:, :x.shape[1], :]  # mf-为什么要取最后96个pe？
+        return self.position_embedding[:, :x.shape[1], :]
 
 
 class TokenEmbedding(nn.Layer):
     def __init__(self, c_in, d_model):
         super(TokenEmbedding, self).__init__()
-        padding = 1 if paddle.__version__ >= '1.5.0' else 2
+        _weight_attr = paddle.ParamAttr(initializer=nn.initializer.KaimingNormal(fan_in=True,
+            nonlinearity='leaky_relu'))
+        _bias_attr = paddle.ParamAttr(initializer=nn.initializer.KaimingNormal(fan_in=True,
+            nonlinearity='leaky_relu'))
         self.tokenConv = nn.Conv1D(in_channels=c_in, out_channels=d_model,
-                                   kernel_size=3, padding=padding, padding_mode='circular', bias_attr=True,
-                                   weight_attr=nn.initializer.KaimingNormal())
+                                   kernel_size=3, padding=1, padding_mode='circular',
+                                   weight_attr=_weight_attr, bias_attr=_bias_attr)
 
     def forward(self, x):
-        x = x
-        x = paddle.transpose(x, [0, 2, 1])  # mf-这里还没有找到对应的函数 x.permute(0, 2, 1)
-        x = self.tokenConv(x)
-        x = paddle.transpose(x, [0, 2, 1])
-        return x
+        out = paddle.transpose(x, [0, 2, 1])
+        out = self.tokenConv(out)
+        out = paddle.transpose(out, [0, 2, 1])
+        return out
 
 
 class FixedEmbedding(nn.Layer):
@@ -97,7 +98,7 @@ class TimeFeatureEmbedding(nn.Layer):
 
         freq_map = {'h': 4, 't': 5, 's': 6, 'm': 1, 'a': 1, 'w': 2, 'd': 3, 'b': 3}
         d_inp = freq_map[freq]
-        self.embed = nn.Linear(d_inp, d_model)  # mf-感觉有问题
+        self.embed = nn.Linear(d_inp, d_model)
 
     def forward(self, x):
         return self.embed(x)

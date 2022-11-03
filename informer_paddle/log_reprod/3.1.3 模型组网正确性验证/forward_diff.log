@@ -1,0 +1,9 @@
+[2022/11/02 22:49:53] root INFO: forward-check enc_embedding-TokenEmbedding: 
+[2022/11/02 22:49:53] root INFO: 	mean diff: check passed: False, value: 3.1068286895751953
+[2022/11/02 22:49:53] root INFO: diff check failed
+2 22:49:53] root INFO: forward-check enc_embedding-TokenEmbedding: 
+[2022/11/02 22:49:53] root INFO: 	mean diff: check passed: False, value: 3.1068286895751953
+[2022/11/02 22:49:53] root INFO: diff check failed
+oot INFO: forward-check enc_embedding-TokenEmbedding: 
+[2022/11/02 22:49:53] root INFO: 	mean diff: check passed: False, value: 3.1068286895751953
+[2022/11/02 22:49:53] root INFO: diff check failed

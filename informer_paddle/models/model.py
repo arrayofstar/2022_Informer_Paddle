@@ -8,7 +8,7 @@ from models.embed import DataEmbedding
 
 
 class Informer(nn.Layer):
-    def __init__(self, enc_in, dec_in, c_out, seq_len, label_len, out_len,
+    def __init__(self, enc_in:int, dec_in:int, c_out:int, seq_len:int, label_len:int, out_len:int,
                  factor=5, d_model=512, n_heads=8, e_layers=3, d_layers=2, d_ff=512,
                  dropout=0.0, attn='prob', embed='fixed', freq='h', activation='gelu',
                  output_attention=False, distil=True, mix=True):

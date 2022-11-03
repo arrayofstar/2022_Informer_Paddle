@@ -79,3 +79,41 @@ informer_pytroch/checkpoints/informer_XXXX（略写）/checkpoint.pth* 。`运�
 
 **【实战】**
 
+
+
+
+
+## 附 1 addle与pytorch在对齐时出现的问题
+
+### 1 模型参数初始化方式差异
+
+以torch.nn.Conv1d和paddle.nn.Conv1D的区别为例，官方指出模型只要的差别在bias。
+
+> paddle中的bias默认是None，需要使用paddle.ParamAttr进行初始化，但没有明确说明如何与pytorch中对齐。
+
+（1）pytroch源码中所示的初始化方式：
+
+**weight (Tensor):** 
+
+$the learnable weights of the module of shape
+    :math:`(\text{out\_channels},
+    \frac{\text{in\_channels}}{\text{groups}}, \text{kernel\_size})`.$
+
+$ The values of these weights are sampled from
+    :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})` where
+    :math:`k = \frac{groups}{C_\text{in} * \text{kernel\_size}}`$
+
+**bias (Tensor):**   the learnable bias of the module of shape (out_channels). If :attr:`bias` is ``True``, then the values of these weights are
+
+$sampled from :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})` where
+    :math:`k = \frac{groups}{C_\text{in} * \text{kernel\_size}}`$
+
+（2）paddle中的初始化方式：
+
+**weight**：Xavier (If the Initializer of the param_attr is not set, the parameter is initialized with Xavier.)
+
+**bias**：默认为0(If the Initializer of the bias_attr is not set, the bias is initialized zero.)
+
+（3）对齐方法
+
+待补充

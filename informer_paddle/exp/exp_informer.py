@@ -1,6 +1,5 @@
 import os
 import time
-import warnings
 
 import numpy as np
 import paddle
@@ -12,8 +11,9 @@ from data.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custo
 from exp.exp_basic import Exp_Basic
 from models.model import Informer, InformerStack
 from utils.tools import EarlyStopping, adjust_learning_rate
-from utils import metric
+from utils.metrics import metric
 
+import warnings
 warnings.filterwarnings('ignore')
 
 
@@ -51,8 +51,8 @@ class Exp_Informer(Exp_Basic):
                 self.args.mix
             )  # mf-这里把float去掉了
 
-        if self.args.use_multi_gpu and self.args.use_gpu:
-            model = paddle.DataParallel(model)
+        # if self.args.use_multi_gpu and self.args.use_gpu:
+        #     model = paddle.DataParallel(model, device_ids=self.args.device_ids)
         return model
 
     def _get_data(self, flag):
@@ -67,26 +67,26 @@ class Exp_Informer(Exp_Basic):
             'WTH_small': Dataset_Custom,
             'ECL': Dataset_Custom,
             'Solar': Dataset_Custom,
-            'my_data': Dataset_Custom,
+            'custom': Dataset_Custom,
         }
         Data = data_dict[self.args.data]
         timeenc = 0 if args.embed != 'timeF' else 1
 
         if flag == 'test':
-            shuffle_flag = False;
-            drop_last = True;
-            batch_size = args.batch_size;
+            shuffle_flag = False
+            drop_last = True
+            batch_size = args.batch_size
             freq = args.freq
         elif flag == 'pred':
-            shuffle_flag = False;
-            drop_last = False;
-            batch_size = 1;
+            shuffle_flag = False
+            drop_last = False
+            batch_size = 1
             freq = args.detail_freq
             Data = Dataset_Pred
         else:
-            shuffle_flag = True;
-            drop_last = True;
-            batch_size = args.batch_size;
+            shuffle_flag = True
+            drop_last = True
+            batch_size = args.batch_size
             freq = args.freq
         data_set = Data(
             root_path=args.root_path,
@@ -280,8 +280,7 @@ class Exp_Informer(Exp_Basic):
             dec_inp = paddle.zeros([batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]], dtype='float32')
         elif self.args.padding == 1:
             dec_inp = paddle.ones([batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]], dtype='float32')
-        # para = batch_y[:,:self.args.label_len,:]
-        dec_inp = paddle.concat([batch_y[:, :self.args.label_len, :], dec_inp], axis=1)
+        dec_inp = paddle.concat([batch_y[:, :self.args.label_len, :], dec_inp], axis=1).astype('float32')
         # dec_inp长度为72，其中前48为真实值，后面24个是要预测的值（用0初始化）
         # encoder - decoder
         if self.args.use_amp:
